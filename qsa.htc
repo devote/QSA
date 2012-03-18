@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <PUBLIC:COMPONENT lightWeight="true">
 <script type="text/javascript">
 
@@ -953,6 +954,32 @@ if ( ie < 5.8 ) {
 	doc.createDocumentFragment = function() {
 		return copyMethod( __createDocumentFragment() );
 	}
+} else {
+
+	function ie8setMethods() {
+		if ( qsa.originalQSA ) return;
+
+		qsa.originalQSA = doc.querySelectorAll;
+
+		doc.querySelectorAll = function( selector ) {
+			return correctQSA( selector, this );
+		}
+		win.Element.prototype.querySelectorAll = doc.querySelectorAll;
+
+		doc.querySelector = function( selector ) {
+			return correctQSA( selector, this )[0] || null;
+		};
+		win.Element.prototype.querySelector = doc.querySelector;
+	}
+
+	doc.attachEvent( "onreadystatechange", function(){
+		if ( doc.readyState === "complete" ) {
+			doc.detachEvent( "onreadystatechange", arguments.callee );
+			ie8setMethods();
+		}
+	});
+
+	win.attachEvent( "onload", ie8setMethods );
 }
 
 } // end of if ( !window.qsa )
