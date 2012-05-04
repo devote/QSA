@@ -1,5 +1,5 @@
 /*
- * QSA CSS Selector Engine v1.2.2
+ * QSA CSS3 Selector Engine v1.2.3
  *
  * Copyright 2011, Dmitriy Pakhtinov ( spb.piksel@gmail.com )
  *
@@ -9,7 +9,7 @@
  *   http://www.opensource.org/licenses/mit-license.php
  *   http://www.gnu.org/licenses/gpl.html
  *
- * Update: 14-03-2012
+ * Update: 05-05-2012
  */
 
 (function( window, undefined ) {
@@ -768,7 +768,8 @@
 			// сбрасываем регулярку в начало
 			mqsa.lastIndex = 0;
 
-			var i, j, results, elem, qsaStart = true;
+			var i, j, results, elem, qsaStart = true,
+				isArray = Object.prototype.toString.apply( extra ) === '[object Array]';
 
 			if ( hasQSA ) {
 				var parent, oid, nid, firstCom = /^\s*[>+~]/.test( selector );
@@ -844,7 +845,9 @@
 								pSplice.call( extra, i--, 1 );
 								// если в экстру передали объект а не массив
 								// ИЕ не удаляет элемент через splice в объекте
-								delete extra[ extra.length ];
+								if ( !isArray ) {
+									delete extra[ extra.length ];
+								}
 							}
 						}
 
@@ -856,7 +859,9 @@
 							pSplice.call( extra, i, 1 );
 							// если в экстру передали объект а не массив
 							// ИЕ не удаляет элемент через splice в объекте
-							delete extra[ extra.length ];
+							if ( !isArray ) {
+								delete extra[ extra.length ];
+							}
 						} else {
 							extra[ i ]._hasDuplicate = true;
 						}
