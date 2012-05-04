@@ -769,7 +769,7 @@
 			mqsa.lastIndex = 0;
 
 			var i, j, results, elem, qsaStart = true,
-				isArray = Object.prototype.toString.apply( extra ) === '[object Array]';
+				isArray = extra instanceof Array;
 
 			if ( hasQSA ) {
 				var parent, oid, nid, firstCom = /^\s*[>+~]/.test( selector );
