@@ -1,5 +1,5 @@
 /*
- * QSA CSS3 Selector Engine v1.2.3
+ * QSA CSS3 Selector Engine v1.3
  *
  * Copyright 2011, Dmitriy Pakhtinov ( spb.piksel@gmail.com )
  *
@@ -9,7 +9,7 @@
  *   http://www.opensource.org/licenses/mit-license.php
  *   http://www.gnu.org/licenses/gpl.html
  *
- * Update: 05-05-2012
+ * Update: 06-05-2012
  */
 
 (function( window, undefined ) {
@@ -29,40 +29,43 @@
 		pSlice = Array.prototype.slice,
 		pSplice = Array.prototype.splice,
 		pPush = Array.prototype.push,
+		testDiv = doc.createElement( "div" ),
+		matches = docEl.matchesSelector ||
+			docEl.oMatchesSelector ||
+			docEl.mozMatchesSelector ||
+			docEl.webkitMatchesSelector ||
+			docEl.msMatchesSelector,
+		dMatch = matches && !matches.call( testDiv, "div" ),
 
 	// есть ли встроенный поиск селекторов
 	hasQSA = (function(){
-		var div = doc.createElement('div');
-		div.innerHTML = "<p class='TEST'></p>";
-		if ( !div.querySelectorAll || div.querySelectorAll(".TEST").length === 0 ) {
-			div = null;
-			return false;
-		}
-		div = null;
-		return true;
+		testDiv.innerHTML = "<p class='TEST'></p>";
+		return !( !testDiv.querySelectorAll || testDiv.querySelectorAll(".TEST").length === 0 );
 	})(),
 
 	qsa = {
 
 		moveElems: (function() {
-			var hasSlice = true, div = doc.createElement("div");
-			div.appendChild( doc.createComment("") );
+
+			var hasSlice = true;
+
+			testDiv.innerHTML = "";
+			testDiv.appendChild( doc.createComment("") );
 
 			try {
 				pSlice.call( docEl.childNodes, 0 );
 			} catch ( _ ) { hasSlice = false }
 
-			if ( div.getElementsByTagName("*").length > 0 || !hasSlice ) {
-				div = null;
-				return function( elems, ret, rmComment, isArray ) {
-					if ( !rmComment && hasSlice ) {
+			if ( testDiv.getElementsByTagName("*").length > 0 || !hasSlice ) {
+				return function( elems, ret, seed, rmComment, isArray ) {
+					if ( !seed && !rmComment && hasSlice ) {
 						pPush.apply( ret, pSlice.call( elems, 0 ) );
-					} else if ( !rmComment && isArray ) {
+					} else if ( !seed && !rmComment && isArray ) {
 						pPush.apply( ret, elems );
 					} else {
 						var i = 0, l = ret.length;
 						for( ; elems[ i ]; i++ ) {
-							if ( elems[ i ].nodeType === 1 ) {
+							if ( elems[ i ].nodeType === 1 && ( !seed || seed === elems[ i ] ) ) {
 								ret[ l++ ] = elems[ i ];
 							}
 						}
@@ -71,9 +74,18 @@
 					return ret;
 				}
 			} else {
-				div = null;
-				return function( elems, ret ) {
-					pPush.apply( ret, pSlice.call( elems, 0 ) );
+				return function( elems, ret, seed ) {
+					if ( seed ) {
+						var i = 0, l = ret.length;
+						for( ; elems[ i ]; i++ ) {
+							if ( elems[ i ].nodeType === 1 && seed === elems[ i ] ) {
+								ret[ l++ ] = elems[ i ];
+							}
+						}
+						l === ret.length || ( ret.length = l );
+					} else {
+						pPush.apply( ret, pSlice.call( elems, 0 ) );
+					}
 					return ret;
 				}
 			}
@@ -289,7 +301,7 @@
 		})(),
 
 		// проверить все правила элементов
-		checkRule: function( chunks, elems, extra, tag ) {
+		checkRule: function( chunks, elems, extra, tag, seed ) {
 
 			// всякие переменные =)
 			var i, l, elem, j = elems.length,
@@ -316,7 +328,7 @@
 
 			if ( !attr && !type && !pseudo && j ) {
 				// если правил нет, просто заносим элементы куда положено
-				qsa.moveElems( elems, extra, !tag, elems instanceof Array );
+				qsa.moveElems( elems, extra, seed, !tag, elems instanceof Array );
 
 			} else {
 
@@ -383,6 +395,10 @@
 							}
 						}
 
+						if ( seed && seed !== elem ) {
+							elem = null;
+						}
+
 						// если элемент не удалили, заносим его в стек
 						elem && ( extra[ l++ ] = elem );
 					}
@@ -395,7 +411,7 @@
 		},
 
 		// Только для внутреннего использования
-		parser: function( selector, context, extra, sub ) {
+		parser: function( selector, context, extra, sub, seed ) {
 
 			// подготавливаем переменные
 			var m, i, j, k, l, n, o, len = selector.length, elems,
@@ -561,7 +577,7 @@
 						// если это конец селектора
 						if ( parts.length == 0 && elems.length && ( ( nextRule === "," ) || ( index === len ) ) ) {
 							// заносим элементы в выходной стек
-							qsa.moveElems( elems, out, !tag, elems instanceof Array );
+							qsa.moveElems( elems, out, seed, !tag, elems instanceof Array );
 						}
 
 					} else {
@@ -569,7 +585,7 @@
 						if ( elems.length > 0 ) {
 							// пропускаем все найденые элементы через фильтр правил
 							if ( ( parts.length == 0 ) && ( ( nextRule === "," ) || ( index === len ) ) ) {
-								cache = qsa.checkRule( m, elems, out, tag );
+								cache = qsa.checkRule( m, elems, out, tag, seed );
 							} else {
 								cache = qsa.checkRule( m, elems, [], tag );
 							}
@@ -595,7 +611,7 @@
 								// проверяем дополнительные правила для оставшихся элементов
 								if ( l ) {
 									if ( ( parts.length == 0 ) && ( ( nextRule === "," ) || ( index === len ) ) ) {
-										cache = qsa.checkRule( m, cache, out, tag );
+										cache = qsa.checkRule( m, cache, out, tag, seed );
 									} else {
 										cache = qsa.checkRule( m, cache, [], tag );
 									}
@@ -699,7 +715,7 @@
 							// запускаем метод рекурсивно, указав как контекст текущие элементы
 							mqsa.lastIndex = index;
 
-							extra = qsa.parser( selector, cache, extra, true );
+							extra = qsa.parser( selector, cache, extra, true, seed );
 
 							index = mqsa.lastIndex;
 
@@ -754,7 +770,7 @@
 		* @context	- контекст поиска, либо элемент, либо массив елементов. Не обязательный
 		* @extra	- массив элементов, которые будут дополнены найдеными.	Не обязательный
 		*/
-		querySelectorAll: function( selector, context, extra, noSort ) {
+		querySelectorAll: function( selector, context, extra, noSort, seed ) {
 
 			// добавить к уже имеющимся элементам
 			extra = extra || [];
@@ -783,7 +799,7 @@
 					// если контекст document
 					if ( elem.nodeType === 9 ) {
 						try {
-							qsa.moveElems( elem.querySelectorAll( selector ), results[ 0 ] );
+							qsa.moveElems( elem.querySelectorAll( selector ), results[ 0 ], seed );
 							qsaStart = false;
 						} catch( _ ) {
 							// при останавливаем все, и пробуем запустить внутренний поиск
@@ -802,7 +818,7 @@
 							!oid && elem.setAttribute( "id", nid );
 
 							try {
-								qsa.moveElems( parent.querySelectorAll( "[id='" + nid + "'] " + selector ), results[ 0 ] );
+								qsa.moveElems( parent.querySelectorAll( "[id='" + nid + "'] " + selector ), results[ 0 ], seed );
 								qsaStart = false;
 							} catch( _ ) {
 								// при останавливаем все, и пробуем запустить внутренний поиск
@@ -812,7 +828,7 @@
 							!oid && elem.removeAttribute( "id" );
 						} else if ( !firstCom ) {
 							try {
-								qsa.moveElems( elem.querySelectorAll( selector ), results[ 0 ] );
+								qsa.moveElems( elem.querySelectorAll( selector ), results[ 0 ], seed );
 								qsaStart = false;
 							} catch( _ ) {
 								// при останавливаем все, и пробуем запустить внутренний поиск
@@ -827,7 +843,7 @@
 
 			if ( qsaStart ) {
 				// Запускаем поиск элементов
-				results = qsa.parser( selector, context, [ extra, ( extra.length > 0 || context.length > 1 ) ] );
+				results = qsa.parser( selector, context, [ extra, ( extra.length > 0 || context.length > 1 ) ], 0, seed );
 			}
 
 			// если требуеться сортировка
@@ -876,6 +892,16 @@
 
 			// поиск закончен
 			return extra;
+		},
+
+		matchesSelector: function( node, selector ) {
+			if ( matches ) {
+				var ret = matches.call( node, selector );
+				if ( ret || !dMatch || node.document && node.document.nodeType !== 11 ) {
+					return ret;
+				}
+			}
+			return qsa.querySelectorAll( selector, null, null, true, node ).length > 0;
 		},
 
 		error: function( msg ) {

@@ -1,4 +1,4 @@
-QSA CSS3 Selector Engine v1.2.3
+QSA CSS3 Selector Engine v1.3
 
 Основные отличия от Sizzle - в два раза меньше размер обфусцированного файла, исходный так же присутствует.
 Все по максимуму прокомментировано на русском языке. Скорость работы внутреннего поиска не используя встроенный
@@ -19,3 +19,4 @@ QSA CSS3 Selector Engine v1.2.3
     qsa.querySelectorAll( "div + p > a", document.getElemetById("myNode") );
     qsa.querySelectorAll( "div + p > a", document.getElemetById("myNode"), [ elem1, elem2, elem3 ] );
 
+    qsa.matchesSelector( Element node, String selector );
